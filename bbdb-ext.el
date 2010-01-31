@@ -23,14 +23,32 @@
 ;;  This file contains some extension functions for BBDB.
 
 ;;  `bbdb-google-map' will search current record's address field using google map.
-;;  `bbdb-recursive-search' will search based on current *BBDB* buffer.
+;;  `bbdb-recursive-search' will search based on all fields of recordes that are
+;;   in current *BBDB* buffer.
+;;  Also there are functions that search records based on different fields (name,
+;;  company, etc):
+;;  `bbdb-recursive-search-name'
+;;  `bbdb-recursive-search-company'
+;;  `bbdb-recursive-search-net'
+;;  `bbdb-recursive-search-notes'
+;;  `bbdb-recursive-search-phones'
+
+;;  All the recursive search functions' keybinding are prefixed by '/-', and similar
+;;  to ibuffer's limit selecting, there is a function `bbdb-disable-all-limits' (also
+;;  bound to '/ /'), which will show all the records in BBDB database.
 
 ;;; Code:
 (require 'bbdb)
 
 (defun bbdb-ext-hook ()
   (define-key bbdb-mode-map [(g)] 'bbdb-google-map)
-  (define-key bbdb-mode-map [(/)] 'bbdb-recursive-search))
+  (define-key bbdb-mode-map (kbd "/ S") 'bbdb-recursive-search)
+  (define-key bbdb-mode-map (kbd "/ n") 'bbdb-recursive-search-name)
+  (define-key bbdb-mode-map (kbd "/ c") 'bbdb-recursive-search-company)
+  (define-key bbdb-mode-map (kbd "/ a") 'bbdb-recursive-search-net)
+  (define-key bbdb-mode-map (kbd "/ o") 'bbdb-recursive-search-notes)
+  (define-key bbdb-mode-map (kbd "/ p") 'bbdb-recursive-search-phones)
+  (define-key bbdb-mode-map (kbd "/ /") 'bbdb-disable-all-limits))
 
 (add-hook 'bbdb-mode-hook 'bbdb-ext-hook)
 
@@ -119,13 +137,71 @@ in either the name(s), company, network address, or notes."
       ;; we could use error here, but it's not really an error.
       (message "No records matching '%s'" string))))
 
+;;;###autoload
+(defun bbdb-recursive-search-name (string elidep)
+  "Display all entries in the *BBDB* buffer matching the regexp STRING in the name
+\(or ``alternate'' names\)."
+  (interactive
+   (list (bbdb-search-prompt "Search records with names %m regexp: ")
+	 current-prefix-arg))
+   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) string))))
+
+;;;###autoload
+(defun bbdb-recursive-search-company (string elidep)
+  "Display all entries in *BBDB* buffer matching STRING in the company field."
+  (interactive
+   (list (bbdb-search-prompt "Search records with company %m regexp: ")
+	 current-prefix-arg))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil string))))
+
+;;;###autoload
+(defun bbdb-recursive-search-net (string elidep)
+  "Display all entries in *BBDB* buffer matching regexp STRING in the network address."
+  (interactive
+   (list (bbdb-search-prompt "Search records with net address %m regexp: ")
+	 current-prefix-arg))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil string))))
+
+;;;###autoload
+(defun bbdb-recursive-search-notes (which string elidep)
+  "Display all entries in *BBDB* buffer matching STRING in the named notes field."
+  (interactive
+   (let (field)
+     (list (setq field (completing-read "Notes field to search (RET for all): "
+					(append '(("notes")) (bbdb-propnames))
+					nil t))
+	   (bbdb-search-prompt "Search records with %s %m regexp: "
+			       (if (string= field "")
+				   "one field"
+				 field))
+	   current-prefix-arg)))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
+	(notes (if (string= which "")
+		   (cons '* string)
+		 (cons (intern which) string))))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil nil notes))))
+
+;;;###autoload
+(defun bbdb-recursive-search-phones (string elidep)
+  "Display all entries in *BBDB* buffer matching the regexp STRING in the phones field."
+  (interactive
+   (list (bbdb-search-prompt "Search records with phone %m regexp: ")
+	 current-prefix-arg))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records
+     (bbdb-search (bbdb-ext-displayed-records) nil nil nil nil string))))
+
+(defun bbdb-disable-all-limits ()
+  "Display all entries in BBDB database."
+  (interactive)
+  (bbdb "" current-prefix-arg))
+
 (defun bbdb-ext-displayed-records ()
   "Return a list of all bbdb records in *BBDB* buffer."
   (mapcar (lambda (rec) (car rec)) bbdb-records))
-
-(defun tttfun ()
-  (interactive)
-  (princ (bbdb-current-field)))
 
 (provide 'bbdb-ext)
 ;;; bbdb-ext.el ends here
