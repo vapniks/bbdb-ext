@@ -32,6 +32,11 @@
 ;;  `bbdb-recursive-search-net'
 ;;  `bbdb-recursive-search-notes'
 ;;  `bbdb-recursive-search-phones'
+;;  `bbdb-recursive-search-address'
+
+;;  `bbdb-address' will search based on the address fields of all the records in BBDB.
+;;  It's bound to "S d". Similar to other search functions (bbdb-name, bbdb-notes, etc)
+;;  you can use ^$ to find the records that don't have addresses.
 
 ;;  All the recursive search functions' keybinding are prefixed by '/-', and similar
 ;;  to ibuffer's limit selecting, there is a function `bbdb-disable-all-limits' (also
@@ -42,12 +47,14 @@
 
 (defun bbdb-ext-hook ()
   (define-key bbdb-mode-map [(g)] 'bbdb-google-map)
+  (define-key bbdb-mode-map (kbd "S d") 'bbdb-address)
   (define-key bbdb-mode-map (kbd "/ S") 'bbdb-recursive-search)
   (define-key bbdb-mode-map (kbd "/ n") 'bbdb-recursive-search-name)
   (define-key bbdb-mode-map (kbd "/ c") 'bbdb-recursive-search-company)
   (define-key bbdb-mode-map (kbd "/ a") 'bbdb-recursive-search-net)
   (define-key bbdb-mode-map (kbd "/ o") 'bbdb-recursive-search-notes)
   (define-key bbdb-mode-map (kbd "/ p") 'bbdb-recursive-search-phones)
+  (define-key bbdb-mode-map (kbd "/ d") 'bbdb-recursive-search-address)
   (define-key bbdb-mode-map (kbd "/ /") 'bbdb-disable-all-limits))
 
 (add-hook 'bbdb-mode-hook 'bbdb-ext-hook)
@@ -121,6 +128,7 @@ If there are several addresses for REC, the address nearset point will be used."
     url))
 
 ;;;###autoload
+;; FIXME: this doesn't search based on phone fields, why?
 (defun bbdb-recursive-search (string elidep)
   "Display all entries in the *BBDB* buffer matching the regexp STRING
 in either the name(s), company, network address, or notes."
@@ -130,8 +138,8 @@ in either the name(s), company, network address, or notes."
   (let* ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
 	 (notes (cons '* string))
 	 (records
-	  (bbdb-search (bbdb-ext-displayed-records) string string string notes
-		       nil)))
+	  (bbdb-ext-search (bbdb-ext-displayed-records) string string string notes
+			   string string)))
     (if records
 	(bbdb-display-records records)
       ;; we could use error here, but it's not really an error.
@@ -194,6 +202,15 @@ in either the name(s), company, network address, or notes."
     (bbdb-display-records
      (bbdb-search (bbdb-ext-displayed-records) nil nil nil nil string))))
 
+;;;###autoload
+(defun bbdb-recursive-search-address (string elidep)
+  "Display all entries in the *BBDB* buffer matching the regexp STRING in the address fields."
+  (interactive
+   (list (bbdb-search-prompt "Search records with address %m regexp: ")
+	 current-prefix-arg))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records (bbdb-ext-search (bbdb-ext-displayed-records) nil nil nil nil nil string))))
+
 (defun bbdb-disable-all-limits ()
   "Display all entries in BBDB database."
   (interactive)
@@ -203,5 +220,165 @@ in either the name(s), company, network address, or notes."
   "Return a list of all bbdb records in *BBDB* buffer."
   (mapcar (lambda (rec) (car rec)) bbdb-records))
 
+;;;###autoload
+(defun bbdb-address (string elidep)
+  "Display all entries in the BBDB matching the regexp STRING in the address field."
+  (interactive
+   (list (bbdb-search-prompt "Search records with address %m regexp: ")
+	 current-prefix-arg))
+  (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
+    (bbdb-display-records (bbdb-ext-search (bbdb-records) nil nil nil nil nil string))))
+
+(defmacro bbdb-ext-search (records &optional name company net notes phone address)
+  "Search RECORDS for optional arguments NAME, COMPANY, NET, NOTES, PHONE, ADDRESS.
+This macro only emits code for those things being searched for;
+literal nils at compile-time cause no code to be emitted.
+
+If you want to reverse the search, bind `bbdb-search-invert' to t."
+  (let (clauses)
+    ;; I didn't protect these vars from multiple evaluation because that
+    ;; actually generates *less efficient code* in elisp, because the extra
+    ;; bindings can't easily be optimized away without lexical scope.  fmh.
+    (or (stringp name) (symbolp name) (error "name must be atomic"))
+    (or (stringp company) (symbolp company) (error "company must be atomic"))
+    (or (stringp net) (symbolp net) (error "net must be atomic"))
+    (or (stringp notes) (symbolp notes) (error "notes must be atomic"))
+    (or (stringp phone) (symbolp phone) (error "phone must be atomic"))
+    (or (stringp address) (symbolp address) (error "address must be atomic"))
+    (if address
+	(setq clauses
+	      (cons
+	       (` (let ((address-fields (bbdb-address-fields record))
+			(done nil))
+		    (if address-fields
+			(while (and address-fields (not done))
+			  (setq done (string-match (, address)
+						   (car address-fields))
+				address-fields (cdr address-fields)))
+		      ;; so that "^$" can be used to find entries that
+		      ;; have no address
+		      (setq done (string-match (, address) "")))
+		    done))
+	       clauses)))
+    (if phone
+	(setq clauses
+	      (cons
+	       (` (let ((rest-of-phones (bbdb-record-phones record))
+			(done nil))
+		    (if rest-of-phones
+			(while (and rest-of-phones (not done))
+			  (setq done (string-match (, phone)
+						   ;; way way wasteful...
+						   (bbdb-phone-string
+						    (car rest-of-phones)))
+				rest-of-phones (cdr rest-of-phones)))
+		      ;; so that "^$" can be used to find entries that
+		      ;; have no phones
+		      (setq done (string-match (, phone) "")))
+		    done))
+	       clauses)))
+    (if notes
+	(setq clauses
+	      (cons
+	       (` (if (stringp (, notes))
+		      (string-match (, notes)
+				    (or (bbdb-record-notes record) ""))
+		    (if (eq (car (, notes)) '*)
+			(let ((fields all-fields) done tmp)
+			  (if (bbdb-record-raw-notes record)
+			      (while (and (not done) fields)
+				(setq tmp (bbdb-record-getprop
+					   record (car fields))
+				      done (and tmp (string-match
+						     (cdr (, notes))
+						     tmp))
+				      fields (cdr fields)))
+			    ;; so that "^$" can be used to find entries that
+			    ;; have no notes
+			    (setq done (string-match (cdr (, notes)) "")))
+			  done)
+		      (string-match (cdr (, notes))
+				    (or (bbdb-record-getprop
+					 record (car (, notes))) "")))))
+	       clauses)))
+    (if name
+	(setq clauses
+	      (append
+	       (` ((string-match (, name) (or (bbdb-record-name record) ""))
+		   (let ((rest-of-aka (bbdb-record-aka record))
+			 (done nil))
+		     (while (and rest-of-aka (not done))
+		       (setq done (string-match (, name) (car rest-of-aka))
+			     rest-of-aka (cdr rest-of-aka)))
+		     done)))
+	       clauses)))
+    (if net
+	(setq clauses
+	      (cons
+	       (` (let ((rest-of-nets (bbdb-record-net record))
+			(done nil))
+		    (if rest-of-nets
+			(while (and rest-of-nets (not done))
+			  (setq done (string-match (, net) (car rest-of-nets))
+				rest-of-nets (cdr rest-of-nets)))
+		      ;; so that "^$" can be used to find entries that
+		      ;; have no net addresses.
+		      (setq done (string-match (, net) "")))
+		    done))
+	       clauses)))
+    (if company
+	(setq clauses
+	      (cons
+	       (` (string-match (, company)
+				(or (bbdb-record-company record) "")))
+	       clauses)))
+
+    (` (let ((matches '())
+	     (,@ (if notes
+		     '((all-fields (cons 'notes
+					 (mapcar (lambda (x) (intern (car x)))
+						 (bbdb-propnames)))))
+		   nil))
+	     (case-fold-search bbdb-case-fold-search)
+	     (records (, records))
+	 (invert (bbdb-search-invert-p))
+	     record)
+	 (while records
+	   (setq record (car records))
+       (if (or (and invert
+	    (not (or (,@ clauses))))
+	   (and (not invert)
+	    (or (,@ clauses))))
+	   (setq matches (cons record matches)))
+       (setq records (cdr records)))
+	 (nreverse matches)))))
+
+(defun bbdb-address-fields (record)
+  "Get all the address fields of RECORD.
+A list of string will be returned."
+  (let ((addrs (bbdb-record-addresses record))
+	(fields nil))
+    (while addrs
+      (let* ((addr (car addrs))
+	     (location (bbdb-address-location addr))
+	     (streets (bbdb-address-streets addr))
+	     (city (bbdb-address-city addr))
+	     (state (bbdb-address-state addr))
+	     (zip (bbdb-address-zip addr))
+	     (country (bbdb-address-country addr)))
+	(when location
+	  (push location fields))
+	(when streets			; streets is a list of strings
+	  (setq fields (append streets fields)))
+	(when city
+	  (push city fields))
+	(when state
+	  (push state fields))
+	(when zip
+	  (push zip fields))
+	(when country
+	  (push country fields)))
+      (setq addrs (cdr addrs)))
+    (remove "" fields)))
 (provide 'bbdb-ext)
 ;;; bbdb-ext.el ends here
