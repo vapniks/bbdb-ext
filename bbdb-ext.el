@@ -1,9 +1,9 @@
 ;;; bbdb-ext.el --- Some extension functions of BBDB
 
-;; Copyright (C) 2010  
+;; Copyright (C) 2010
 
-;; Author: 
-;; Keywords: 
+;; Author: Joe Bloggs <vapniks@yahoo.com>
+;; Keywords: bbdb
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
