@@ -1,14 +1,32 @@
-;;; bbdb-ext.el --- Some extension functions of BBDB
+;;; bbdb-ext.el --- Extra commands for BBDB
 
-;; Copyright (C) 2010
-
+;; Filename: bbdb-ext.el
+;; Description: Extra commands for BBDB
 ;; Author: Joe Bloggs <vapniks@yahoo.com>
-;; Keywords: bbdb
+;; Maintainer: Joe Bloggs <vapniks@yahoo.com>
+;; Copyleft (Ↄ) 2013, Joe Bloggs, all rites reversed.
+;; Created: 2010
+;; Version: 0.1
+;; Last-Updated: 2013-05-13 19:19:43
+;;           By: Joe Bloggs
+;; URL: https://github.com/vapniks/bbdb-ext
+;; Keywords: extensions
+;; Compatibility: GNU Emacs 24.3.1
+;; Package-Requires: ((bbdb "2.36"))
+;;
+;; Features that might be required by this library:
+;;
+;; bbdb
+;;
 
+;;; This file is NOT part of GNU Emacs
+
+;;; License
+;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; the Free Software Foundation; either version 3, or (at your option)
+;; any later version.
 
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,31 +34,90 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program; see the file COPYING.
+;; If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
+;;; Commentary: 
+;;
+;; Bitcoin donations gratefully accepted: 1GWis4cd4aokQrWxAd3ZASrsye5CGq5LJY
+;;
+;;  This file contains some extra commands for BBDB. Here is a list of the keybindings:
 
-;;  This file contains some extension functions for BBDB.
+;; "g"    : Search address of current record on google maps
+;; "S d"  : Show records with address field matching regexp (use "^$" to show records with no address)
+;; "/ S"  : Show records that match regexp in either name, company, network, address or notes fields
+;; "/ n"  : Show records with name field matching regexp
+;; "/ c"  : Show records with company field matching regexp
+;; "/ a"  : Show records with network address field matching regexp
+;; "/ o"  : Show records with notes field matching regexp
+;; "/ p"  : Show records with phones field matching regexp
+;; "/ d"  : Show records with address field matching regexp (use "^$" to show records with no address)
+;; "/ /"  : Show all records
 
-;;  `bbdb-google-map' will search current record's address field using google map.
-;;  `bbdb-recursive-search' will search based on all fields of recordes that are
-;;   in current *BBDB* buffer.
-;;  Also there are functions that search records based on different fields (name,
-;;  company, etc):
+;;; Commands:
+;;
+;; Below are complete command list:
+;;
+;;  `bbdb-google-map'
+;;    Search REC's address field using Google Maps.
+;;  `bbdb-recursive-search'
+;;    Display all entries in the *BBDB* buffer matching the REGEX in either the name(s), company, network address, or notes.
 ;;  `bbdb-recursive-search-name'
+;;    Display all entries in the *BBDB* buffer matching the REGEX in the name (or ``alternate'' names) field.
 ;;  `bbdb-recursive-search-company'
+;;    Display all entries in *BBDB* buffer matching REGEX in the company field.
 ;;  `bbdb-recursive-search-net'
+;;    Display all entries in *BBDB* buffer matching regexp REGEX in the network address.
 ;;  `bbdb-recursive-search-notes'
+;;    Display all entries in *BBDB* buffer matching REGEX in the named notes field.
 ;;  `bbdb-recursive-search-phones'
+;;    Display all entries in *BBDB* buffer matching the REGEX in the phones field.
 ;;  `bbdb-recursive-search-address'
+;;    Display all entries in the *BBDB* buffer matching the REGEX in the address fields.
+;;  `bbdb-disable-all-limits'
+;;    Display all entries in BBDB database.
+;;  `bbdb-address'
+;;    Display all entries in the BBDB matching the REGEX in the address field.
+;;
+;;; Customizable Options:
+;;
+;; Below are customizable option list:
+;;
 
-;;  `bbdb-address' will search based on the address fields of all the records in BBDB.
-;;  It's bound to "S d". Similar to other search functions (bbdb-name, bbdb-notes, etc)
-;;  you can use ^$ to find the records that don't have addresses.
 
-;;  All the recursive search functions' keybinding are prefixed by '/-', and similar
-;;  to ibuffer's limit selecting, there is a function `bbdb-disable-all-limits' (also
-;;  bound to '/ /'), which will show all the records in BBDB database.
+;;; Installation:
+;;
+;; Put bbdb-ext.el in a directory in your load-path, e.g. ~/.emacs.d/
+;; You can add a directory to your load-path with the following line in ~/.emacs
+;; (add-to-list 'load-path (expand-file-name "~/elisp"))
+;; where ~/elisp is the directory you want to add 
+;; (you don't need to do this for ~/.emacs.d - it's added by default).
+;;
+;; Add the following to your ~/.emacs startup file.
+;;
+;; (require 'bbdb-ext)
+
+;;; Change log:
+;;	
+;; 2013/05/13
+;;      * Update documentation, tidy code, and post to Marmalade.
+;; 
+;; 2010
+;;      * First released
+
+;;; Acknowledgements:
+;;
+;; 
+;;
+
+;;; TODO
+;;
+;; Fix `bbdb-recursive-search' to work with phone field aswell
+;;
+
+;;; Require
+
+(require 'bbdb)
 
 ;;; Code:
 (require 'bbdb)
@@ -61,24 +138,22 @@
 
 ;;;###autoload
 (defun bbdb-google-map (&optional rec)
-  "Search REC's address field using Goole Map.
-If REC is `nil', current record will be used.
-If there is no address filed for REC, an message will be given in minibuffer.
+  "Search REC's address field using Google Maps.
+If REC is `nil', the current record will be used.
+If there is no address filed for REC, a message will be given in minibuffer.
 If there are several addresses for REC, the address nearest point will be used."
   (interactive)
   (or rec (setq rec (bbdb-current-record)))
-
   (unless rec
     (error "No current record"))
-
   ;; now we should get the address of REC
   (let ((address (bbdb-gm-address rec)))
     (if address
-	(bbdb-gm-search (bbdb-gm-build-url address))
+	(browse-url (bbdb-gm-build-url address))
       (message "No address for current entry!"))))
 
 (defun bbdb-gm-address (rec)
-  "Get the address that will be used by google map for REC.
+  "Get the address that will be used by google maps for REC.
 If there is no address filed for rec, `nil' will be returned.
 If there are several addresses for REC, the address nearset point will be used."
   (let ((addresses (bbdb-record-addresses rec)))
@@ -87,11 +162,9 @@ If there are several addresses for REC, the address nearset point will be used."
 	(let ((prop (bbdb-current-field))
 	      (p (point))
 	      (i 0))
-	  
 	  (while (and prop (not (eq 'name (car prop))))
 	    (bbdb-next-field -1)
 	    (setq prop (bbdb-current-field)))
-	  
 	  (while (<= (point) p)
 	    (setq prop (bbdb-current-field))
 	    (if (eq 'address (car prop))
@@ -105,14 +178,9 @@ If there are several addresses for REC, the address nearset point will be used."
 		  (if (= 2 (length prop))
 		      (setq i (1+ i)))))
 	    (bbdb-next-field))
-	  
 	  (if (zerop i)
 	      (car addresses)
 	    (nth (1- i) addresses)))))))
-
-(defun bbdb-gm-search (url)
-  "Search the URL."
-  (browse-url url))
 
 (defun bbdb-gm-build-url (addr)
   "Build the url string according to ADDR."
@@ -121,61 +189,59 @@ If there are several addresses for REC, the address nearset point will be used."
 	 (city (bbdb-address-city addr))
 	 (state (bbdb-address-state addr))
 	 (country (bbdb-address-country addr))
-	 (url (concat base (url-hexify-string (mapconcat (lambda (arg) arg)
-							 (remove-if (lambda (str)
-								      (string-match "^[ \t\n]*$" str))
-								    (list streets city state country)) ",")))))
+	 (url (concat base (url-hexify-string
+                            (mapconcat (lambda (arg) arg)
+                                       (remove-if (lambda (str)
+                                                    (string-match "^[ \t\n]*$" str))
+                                                  (list streets city state country)) ",")))))
     url))
 
 ;;;###autoload
 ;; FIXME: this doesn't search based on phone fields, why?
-(defun bbdb-recursive-search (string elidep)
-  "Display all entries in the *BBDB* buffer matching the regexp STRING
-in either the name(s), company, network address, or notes."
+(defun bbdb-recursive-search (regex elidep)
+  "Display all entries in the *BBDB* buffer matching the REGEX in either the name(s), company, network address, or notes."
   (interactive
    (list (bbdb-search-prompt "Search records %m regexp: ")
 	 current-prefix-arg))
   (let* ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
-	 (notes (cons '* string))
+	 (notes (cons '* regex))
 	 (records
-	  (bbdb-ext-search (bbdb-ext-displayed-records) string string string notes
-			   string string)))
+	  (bbdb-ext-search (bbdb-ext-displayed-records) regex regex regex notes
+			   regex regex)))
     (if records
 	(bbdb-display-records records)
-      ;; we could use error here, but it's not really an error.
-      (message "No records matching '%s'" string))))
+      (message "No records matching '%s'" regex))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-name (string elidep)
-  "Display all entries in the *BBDB* buffer matching the regexp STRING in the name
-\(or ``alternate'' names\)."
+(defun bbdb-recursive-search-name (regex elidep)
+  "Display all entries in the *BBDB* buffer matching the REGEX in the name \(or ``alternate'' names\) field."
   (interactive
    (list (bbdb-search-prompt "Search records with names %m regexp: ")
 	 current-prefix-arg))
    (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
-    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) string))))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) regex))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-company (string elidep)
-  "Display all entries in *BBDB* buffer matching STRING in the company field."
+(defun bbdb-recursive-search-company (regex elidep)
+  "Display all entries in *BBDB* buffer matching REGEX in the company field."
   (interactive
    (list (bbdb-search-prompt "Search records with company %m regexp: ")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
-    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil string))))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil regex))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-net (string elidep)
-  "Display all entries in *BBDB* buffer matching regexp STRING in the network address."
+(defun bbdb-recursive-search-net (regex elidep)
+  "Display all entries in *BBDB* buffer matching regexp REGEX in the network address."
   (interactive
    (list (bbdb-search-prompt "Search records with net address %m regexp: ")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
-    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil string))))
+    (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil regex))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-notes (which string elidep)
-  "Display all entries in *BBDB* buffer matching STRING in the named notes field."
+(defun bbdb-recursive-search-notes (which regex elidep)
+  "Display all entries in *BBDB* buffer matching REGEX in the named notes field."
   (interactive
    (let (field)
      (list (setq field (completing-read "Notes field to search (RET for all): "
@@ -188,46 +254,46 @@ in either the name(s), company, network address, or notes."
 	   current-prefix-arg)))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
 	(notes (if (string= which "")
-		   (cons '* string)
-		 (cons (intern which) string))))
+		   (cons '* regex)
+		 (cons (intern which) regex))))
     (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil nil notes))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-phones (string elidep)
-  "Display all entries in *BBDB* buffer matching the regexp STRING in the phones field."
+(defun bbdb-recursive-search-phones (regex elidep)
+  "Display all entries in *BBDB* buffer matching the REGEX in the phones field."
   (interactive
    (list (bbdb-search-prompt "Search records with phone %m regexp: ")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records
-     (bbdb-search (bbdb-ext-displayed-records) nil nil nil nil string))))
+     (bbdb-search (bbdb-ext-displayed-records) nil nil nil nil regex))))
 
 ;;;###autoload
-(defun bbdb-recursive-search-address (string elidep)
-  "Display all entries in the *BBDB* buffer matching the regexp STRING in the address fields."
+(defun bbdb-recursive-search-address (regex elidep)
+  "Display all entries in the *BBDB* buffer matching the REGEX in the address fields."
   (interactive
    (list (bbdb-search-prompt "Search records with address %m regexp: ")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
-    (bbdb-display-records (bbdb-ext-search (bbdb-ext-displayed-records) nil nil nil nil nil string))))
+    (bbdb-display-records (bbdb-ext-search (bbdb-ext-displayed-records) nil nil nil nil nil regex))))
 
-(defun bbdb-disable-all-limits ()
+(defun bbdb-disable-all-limits nil
   "Display all entries in BBDB database."
   (interactive)
   (bbdb "" current-prefix-arg))
 
-(defun bbdb-ext-displayed-records ()
+(defun bbdb-ext-displayed-records nil
   "Return a list of all bbdb records in *BBDB* buffer."
   (mapcar (lambda (rec) (car rec)) bbdb-records))
 
 ;;;###autoload
-(defun bbdb-address (string elidep)
-  "Display all entries in the BBDB matching the regexp STRING in the address field."
+(defun bbdb-address (regex elidep)
+  "Display all entries in the BBDB matching the REGEX in the address field."
   (interactive
    (list (bbdb-search-prompt "Search records with address %m regexp: ")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
-    (bbdb-display-records (bbdb-ext-search (bbdb-records) nil nil nil nil nil string))))
+    (bbdb-display-records (bbdb-ext-search (bbdb-records) nil nil nil nil nil regex))))
 
 (defmacro bbdb-ext-search (records &optional name company net notes phone address)
   "Search RECORDS for optional arguments NAME, COMPANY, NET, NOTES, PHONE, ADDRESS.
@@ -341,16 +407,16 @@ If you want to reverse the search, bind `bbdb-search-invert' to t."
 		   nil))
 	     (case-fold-search bbdb-case-fold-search)
 	     (records (, records))
-	 (invert (bbdb-search-invert-p))
+             (invert (bbdb-search-invert-p))
 	     record)
 	 (while records
 	   (setq record (car records))
-       (if (or (and invert
-	    (not (or (,@ clauses))))
-	   (and (not invert)
-	    (or (,@ clauses))))
-	   (setq matches (cons record matches)))
-       (setq records (cdr records)))
+           (if (or (and invert
+                        (not (or (,@ clauses))))
+                   (and (not invert)
+                        (or (,@ clauses))))
+               (setq matches (cons record matches)))
+           (setq records (cdr records)))
 	 (nreverse matches)))))
 
 (defun bbdb-address-fields (record)
@@ -380,5 +446,11 @@ A list of string will be returned."
 	  (push country fields)))
       (setq addrs (cdr addrs)))
     (remove "" fields)))
+
+
 (provide 'bbdb-ext)
+
+;; (magit-push)
+;; (yaoddmuse-post "EmacsWiki" "bbdb-ext.el" (buffer-name) (buffer-string) "update")
+
 ;;; bbdb-ext.el ends here
