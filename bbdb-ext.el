@@ -6,9 +6,9 @@
 ;; Maintainer: Joe Bloggs <vapniks@yahoo.com>
 ;; Copyleft (Ↄ) 2013, Joe Bloggs, all rites reversed.
 ;; Created: 2010
-;; Version: 0.1
+;; Version: 20151220.2009
 ;; Package-Version: 20130513.1152
-;; Last-Updated: 2015-12-20 18:00:00
+;; Last-Updated: Sun Dec 20 20:09:34 2015
 ;;           By: Joe Bloggs
 ;; URL: https://github.com/vapniks/bbdb-ext
 ;; Keywords: extensions
@@ -17,7 +17,7 @@
 ;;
 ;; Features that might be required by this library:
 ;;
-;; bbdb
+;; bbdb bbdb
 ;;
 
 ;;; This file is NOT part of GNU Emacs
@@ -44,43 +44,44 @@
 ;;
 ;;  This file contains some extra commands for BBDB. Here is a list of the keybindings:
 
-;; "g"    : Search address of current record on google maps
-;; "S d"  : Show records with address field matching regexp (use "^$" to show records with no address)
-;; "/ S"  : Show records that match regexp in either name, company, network, address or notes fields
-;; "/ n"  : Show records with name field matching regexp
-;; "/ c"  : Show records with company field matching regexp
-;; "/ a"  : Show records with network address field matching regexp
-;; "/ o"  : Show records with notes field matching regexp
-;; "/ p"  : Show records with phones field matching regexp
-;; "/ d"  : Show records with address field matching regexp (use "^$" to show records with no address)
-;; "/ /"  : Show all records
-
 ;;; Commands:
 ;;
-;; Below are complete command list:
+;; Below is a complete list of commands:
 ;;
+;;  `bbdb-recursive-search'
+;;    Perform recursive search on FIELD.
+;;    Keybinding: / ?
 ;;  `bbdb-google-map'
 ;;    Search REC's address field using Google Maps.
-;;  `bbdb-recursive-search'
+;;    Keybinding: G
+;;  `bbdb-recursive-search-all'
 ;;    Display all entries in the *BBDB* buffer matching the REGEX in either the name(s), company, network address, or notes.
+;;    Keybinding: / S
 ;;  `bbdb-recursive-search-name'
 ;;    Display all entries in the *BBDB* buffer matching the REGEX in the name (or ``alternate'' names) field.
+;;    Keybinding: / n
 ;;  `bbdb-recursive-search-company'
 ;;    Display all entries in *BBDB* buffer matching REGEX in the company field.
+;;    Keybinding: / c
 ;;  `bbdb-recursive-search-net'
-;;    Display all entries in *BBDB* buffer matching regexp REGEX in the network address.
+;;    Display all entries in *BBDB* buffer matching regexp REGEX in the network/email address.
+;;    Keybinding: / e
 ;;  `bbdb-recursive-search-xfields'
-;;    Display all entries in *BBDB* buffer matching REGEX in the named xfields field.
+;;    Display all BBDB records for which xfield FIELD matches REGEXP.
+;;    Keybinding: / x
 ;;  `bbdb-recursive-search-phones'
 ;;    Display all entries in *BBDB* buffer matching the REGEX in the phones field.
+;;    Keybinding: / p
 ;;  `bbdb-recursive-search-address'
 ;;    Display all entries in the *BBDB* buffer matching the REGEX in the address fields.
+;;    Keybinding: / d
 ;;  `bbdb-disable-all-limits'
 ;;    Display all entries in BBDB database.
+;;    Keybinding: g
 ;;
 ;;; Customizable Options:
 ;;
-;; Below are customizable option list:
+;; Below is a list of customizable options:
 ;;
 
 
@@ -97,6 +98,10 @@
 ;; (require 'bbdb-ext)
 
 ;;; Change log:
+;; 20-Dec-2015    Joe Bloggs  
+;;    Last-Updated: Sun Dec 20 20:09:34 2015 (Joe Bloggs)
+;;    Fixes to make compatible with new version of BBDB
+;;    
 ;;	
 ;; 2013/05/13
 ;;      * Update documentation, tidy code, and post to Marmalade.
@@ -124,17 +129,32 @@
 (defun bbdb-ext-hook ()
   (define-key bbdb-mode-map (kbd "G") 'bbdb-google-map)
   (define-key bbdb-mode-map (kbd "S d") 'bbdb-search-address)
-  (define-key bbdb-mode-map (kbd "/ S") 'bbdb-recursive-search)
+  (define-key bbdb-mode-map (kbd "/ S") 'bbdb-recursive-search-all)
   (define-key bbdb-mode-map (kbd "/ n") 'bbdb-recursive-search-name)
   (define-key bbdb-mode-map (kbd "/ c") 'bbdb-recursive-search-company)
   (define-key bbdb-mode-map (kbd "/ e") 'bbdb-recursive-search-net)
   (define-key bbdb-mode-map (kbd "/ x") 'bbdb-recursive-search-xfields)
   (define-key bbdb-mode-map (kbd "/ p") 'bbdb-recursive-search-phones)
   (define-key bbdb-mode-map (kbd "/ a") 'bbdb-recursive-search-address)
+  (define-key bbdb-mode-map (kbd "/ ?") 'bbdb-recursive-search)
   (define-key bbdb-mode-map (kbd "/ /") 'bbdb-disable-all-limits)
   (define-key bbdb-mode-map (kbd "g") 'bbdb-disable-all-limits))
 
 (add-hook 'bbdb-mode-hook 'bbdb-ext-hook)
+
+(defun bbdb-recursive-search (field)
+  "Perform recursive search on FIELD.
+A recursive search, limits the search to the currently displayed items.
+When called interactively FIELD is prompted for."
+  (interactive
+   (list (ido-completing-read "Search field: " '("address" "email" "name" "phone" "company" "other" "all"))))
+  (cond ((equal field "address") (call-interactively 'bbdb-recursive-search-address))
+	((equal field "email") (call-interactively 'bbdb-recursive-search-net))
+	((equal field "name") (call-interactively 'bbdb-recursive-search-name))
+	((equal field "phone") (call-interactively 'bbdb-recursive-search-phones))
+	((equal field "company") (call-interactively 'bbdb-recursive-search-company))
+	((equal field "other") (call-interactively 'bbdb-recursive-search-xfields))
+	((equal field "all") (call-interactively 'bbdb-recursive-search-all))))
 
 ;;;###autoload
 (defun bbdb-google-map (&optional rec)
@@ -198,7 +218,7 @@ If there are several addresses for REC, the address nearest point will be used."
 
 ;;;###autoload
 ;; FIXME: this doesn't search based on phone fields, why?
-(defun bbdb-recursive-search (regex)
+(defun bbdb-recursive-search-all (regex)
   "Display all entries in the *BBDB* buffer matching the REGEX in either the name(s), company, network address, or notes."
   (interactive (list (bbdb-search-read "")))
   (let* ((notes (cons '* regex))
