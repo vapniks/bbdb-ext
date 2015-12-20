@@ -7,7 +7,8 @@
 ;; Copyleft (Ↄ) 2013, Joe Bloggs, all rites reversed.
 ;; Created: 2010
 ;; Version: 0.1
-;; Last-Updated: 2013-05-13 19:19:43
+;; Package-Version: 20130513.1152
+;; Last-Updated: 2015-12-20 18:00:00
 ;;           By: Joe Bloggs
 ;; URL: https://github.com/vapniks/bbdb-ext
 ;; Keywords: extensions
@@ -201,7 +202,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search (regex elidep)
   "Display all entries in the *BBDB* buffer matching the REGEX in either the name(s), company, network address, or notes."
   (interactive
-   (list (bbdb-search-prompt "Search records %m regexp: ")
+   (list (bbdb-search-read "Search records")
 	 current-prefix-arg))
   (let* ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
 	 (notes (cons '* regex))
@@ -216,7 +217,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search-name (regex elidep)
   "Display all entries in the *BBDB* buffer matching the REGEX in the name \(or ``alternate'' names\) field."
   (interactive
-   (list (bbdb-search-prompt "Search records with names %m regexp: ")
+   (list (bbdb-search-read "Search records with names")
 	 current-prefix-arg))
    (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) regex))))
@@ -225,7 +226,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search-company (regex elidep)
   "Display all entries in *BBDB* buffer matching REGEX in the company field."
   (interactive
-   (list (bbdb-search-prompt "Search records with company %m regexp: ")
+   (list (bbdb-search-read "Search records with company")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil regex))))
@@ -234,7 +235,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search-net (regex elidep)
   "Display all entries in *BBDB* buffer matching regexp REGEX in the network address."
   (interactive
-   (list (bbdb-search-prompt "Search records with net address %m regexp: ")
+   (list (bbdb-search-read "Search records with net address")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records (bbdb-search (bbdb-ext-displayed-records) nil nil regex))))
@@ -247,10 +248,10 @@ If there are several addresses for REC, the address nearset point will be used."
      (list (setq field (completing-read "Notes field to search (RET for all): "
 					(append '(("notes")) (bbdb-propnames))
 					nil t))
-	   (bbdb-search-prompt "Search records with %s %m regexp: "
-			       (if (string= field "")
-				   "one field"
-				 field))
+	   (bbdb-search-read (format "Search records with %s"
+				     (if (string= field "")
+					 "one field"
+				       field)))
 	   current-prefix-arg)))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep))
 	(notes (if (string= which "")
@@ -262,7 +263,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search-phones (regex elidep)
   "Display all entries in *BBDB* buffer matching the REGEX in the phones field."
   (interactive
-   (list (bbdb-search-prompt "Search records with phone %m regexp: ")
+   (list (bbdb-search-read "Search records with phone")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records
@@ -272,7 +273,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-recursive-search-address (regex elidep)
   "Display all entries in the *BBDB* buffer matching the REGEX in the address fields."
   (interactive
-   (list (bbdb-search-prompt "Search records with address %m regexp: ")
+   (list (bbdb-search-read "Search records with address")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records (bbdb-ext-search (bbdb-ext-displayed-records) nil nil nil nil nil regex))))
@@ -290,7 +291,7 @@ If there are several addresses for REC, the address nearset point will be used."
 (defun bbdb-address (regex elidep)
   "Display all entries in the BBDB matching the REGEX in the address field."
   (interactive
-   (list (bbdb-search-prompt "Search records with address %m regexp: ")
+   (list (bbdb-search-read "Search records with address")
 	 current-prefix-arg))
   (let ((bbdb-display-layout (bbdb-grovel-elide-arg elidep)))
     (bbdb-display-records (bbdb-ext-search (bbdb-records) nil nil nil nil nil regex))))
